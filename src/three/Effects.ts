@@ -160,6 +160,14 @@ export class ViewComposer {
         `[ViewComposer] view ${view.id} has a pass that reads scene depth; set effects.depthTexture = true`,
       );
     }
+
+    if (this.depthConsumers.length > 0 && (options.samples ?? 0) > 0) {
+      console.warn(
+        `[ViewComposer] view ${view.id} combines samples with passes that read scene depth. ` +
+          'The multisampled depth is resolved on every read, which measured ~27x slower than the ' +
+          'same chain without MSAA. TAA already anti-aliases; prefer one or the other.',
+      );
+    }
     if (extra) {
       for (const pass of Array.isArray(extra) ? extra : [extra]) this.addPass(pass);
     }

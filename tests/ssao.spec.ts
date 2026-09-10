@@ -1,18 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
-import { PNG } from 'pngjs';
+import { meanLuminance, settle } from './helpers';
 
 const ANCHOR = { x: 20, y: 20, width: 400, height: 300 };
-
-function meanLuminance(buffer: Buffer): number {
-  const png = PNG.sync.read(buffer);
-  let total = 0;
-
-  for (let i = 0; i < png.data.length; i += 4) {
-    total += 0.2126 * png.data[i]! + 0.7152 * png.data[i + 1]! + 0.0722 * png.data[i + 2]!;
-  }
-
-  return total / (png.data.length / 4);
-}
 
 async function renderWithAO(page: Page, options: Record<string, number>): Promise<number> {
   await page.goto('/tests/harness.html');
@@ -23,6 +12,7 @@ async function renderWithAO(page: Page, options: Record<string, number>): Promis
     h.frame();
   }, options);
 
+  await settle(page);
   return meanLuminance(await page.screenshot({ clip: ANCHOR }));
 }
 
@@ -58,6 +48,7 @@ test('occlusion stays off the background', async ({ page }) => {
   // An unoccluded AO of 1.0 still passes through ACES and sRGB before it
   // reaches a screenshot, landing near 226 — that is fixed maths, so it holds
   // across GPUs, unlike a scene-dependent average.
+  await settle(page);
   const corner = meanLuminance(await page.screenshot({ clip: { x: 24, y: 24, width: 12, height: 12 } }));
 
   expect(corner, `empty space must read as unoccluded, got ${corner.toFixed(1)}`).toBeGreaterThan(220);

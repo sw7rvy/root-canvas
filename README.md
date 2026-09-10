@@ -15,6 +15,7 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # static bundle in dist/
 npm test         # Playwright suite (see Tests)
+npm run bench    # frame cost per configuration (see Performance)
 ```
 
 ## Quick start
@@ -282,6 +283,46 @@ Three notes if you extend them:
 - `radius` is a bad axis to assert on. Past a certain size, samples land on the background and occlusion *drops*, so the suite tests `power`, which is monotonic by construction.
 - The `output: 'ao'` buffer passes through tone mapping before a screenshot sees it, so an unoccluded 1.0 arrives near 226, not 255. That number is fixed maths and stable across GPUs; scene-dependent averages are not.
 - Never assert on a wall-clock frame count. CI runs a software renderer that manages a couple of frames where a GPU manages sixty. Step frames explicitly and observe state changes through events instead — the context-restore test samples the TAA counter inside the `contextrestored` handler rather than racing the render loop for it.
+
+## Performance
+
+`npm run bench` measures each configuration against a running dev server. Numbers below: RTX 5080 through ANGLE/D3D11, headless Chromium, one 400×300 view at DPR 1, 563k triangles across 40 draws, median of 120 frames.
+
+| configuration | frame ms | vs baseline | draws | target MB |
+| --- | ---: | ---: | ---: | ---: |
+| no effects | 0.05 | 1.00x | 40 | 0.0 |
+| composer only | 0.08 | 1.78x | 41 | 1.8 |
+| SSAO | 0.10 | 2.22x | 44 | 1.8 |
+| TAA, no velocity | 0.07 | 1.67x | 43 | 3.7 |
+| TAA + velocity | 0.14 | 3.11x | 83 | 4.6 |
+| SSAO + TAA + velocity | 0.14 | 3.00x | 86 | 4.6 |
+| everything at 0.5 scale | 0.13 | 2.89x | 86 | 1.1 |
+| **everything + MSAA 4x** | **3.77** | **83.67x** | 86 | 4.6 |
+
+Read the draw counts before the milliseconds — they are exact, while sub-millisecond timings on a fast GPU sit close to the noise floor.
+
+- **Velocity costs one draw per mesh.** 43 → 83 draws on a 40-mesh scene is the second scene render, made visible. It is the single largest structural cost in the chain, and `taa: { velocity: false }` removes it.
+- **SSAO is three draws**, TAA two, the composer blit one — all independent of scene complexity, so they scale with view resolution rather than geometry.
+- **Views add up linearly**: two views on the full chain measured 172 draws against 86, and roughly double the frame cost.
+- The full chain holds **60fps** under the real loop on this scene and GPU.
+
+### Don't combine MSAA with passes that read depth
+
+That 83x row is not a typo, and isolating it shows the cliff is specific:
+
+| | frame ms |
+| --- | ---: |
+| MSAA 4x alone | 0.05 |
+| MSAA 4x + depth texture, nothing reading it | 0.08 |
+| MSAA 4x + a chain that samples depth | 3.77 |
+
+MSAA is cheap until something reads the depth texture. The most likely explanation is that the multisampled depth must be resolved on every read, and SSAO plus TAA read it several times per frame — a resolve per read rather than per frame. I have not confirmed that in a driver trace, so treat the mechanism as a hypothesis and the measurement as fact.
+
+TAA already anti-aliases, so the two are largely redundant. `ViewComposer` now warns when `samples` is combined with a depth-reading pass.
+
+### What is not measured
+
+WebGL exposes no usable GPU timer — Chrome disables `EXT_disjoint_timer_query_webgl2`, `gl.finish()` does not reliably drain the pipeline through ANGLE, and `clientWaitSync` cannot be busy-waited because command submission needs the event loop. These figures are therefore main-thread cost plus whatever the driver blocks on, which is the number that decides whether your page janks, not total GPU occupancy. Nothing here has been measured on mobile or integrated graphics, where the fill-rate costs will dominate differently.
 
 ## Deploying the demo
 

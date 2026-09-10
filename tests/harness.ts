@@ -175,6 +175,19 @@ class Harness {
     return view;
   }
 
+  /** A heavier scene, so the cost of re-rendering geometry becomes visible. */
+  populateHeavy(copies = 40): void {
+    const view = this.view!;
+    const geometry = new THREE.TorusKnotGeometry(0.3, 0.11, 220, 32);
+    const material = new THREE.MeshStandardMaterial({ color: 0x8899ff });
+
+    for (let i = 0; i < copies; i += 1) {
+      const mesh = view.add(new THREE.Mesh(geometry, material));
+      const angle = (i / copies) * Math.PI * 2;
+      mesh.position.set(Math.cos(angle) * 1.2, Math.sin(angle * 3) * 0.5, Math.sin(angle) * 1.2);
+    }
+  }
+
   populate(): void {
     const view = this.view!;
 
@@ -268,6 +281,87 @@ class Harness {
     }
 
     return peak;
+  }
+
+  /** GPU string, so a benchmark can say which device produced its numbers. */
+  renderer(): string {
+    const gl = this.stage.core.renderer.getContext();
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    return info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : 'unknown';
+  }
+
+  /**
+   * Frame cost including GPU work. readPixels forces the pipeline to drain, so
+   * each sample covers submit *and* execution rather than just the JS half.
+   */
+  /**
+   * Main-thread cost of a frame. WebGL exposes no usable GPU timer (Chrome
+   * disables EXT_disjoint_timer_query_webgl2, and clientWaitSync cannot be
+   * busy-waited because command submission needs the event loop), so this is
+   * CPU submit time plus whatever the driver blocks on — the figure that
+   * decides whether the main thread janks.
+   */
+  bench(frames: number): { median: number; calls: number; triangles: number } {
+    const renderer = this.stage.core.renderer;
+    const samples: number[] = [];
+
+    for (let i = 0; i < 20; i += 1) this.frame();
+
+    // info.render resets at the start of every renderer.render() call, so a
+    // frame that renders a velocity pass, a chain and a blit would otherwise
+    // report only the last one
+    renderer.info.autoReset = false;
+    renderer.info.reset();
+    this.frame();
+    const calls = renderer.info.render.calls;
+    const triangles = renderer.info.render.triangles;
+    renderer.info.autoReset = true;
+
+    // performance.now() is clamped to ~100us in Chrome, so time a batch and
+    // divide rather than trying to resolve a single fast frame
+    const batch = 20;
+    for (let i = 0; i < frames / batch; i += 1) {
+      const start = performance.now();
+      for (let j = 0; j < batch; j += 1) this.frame();
+      samples.push((performance.now() - start) / batch);
+    }
+
+    samples.sort((a, b) => a - b);
+    return { median: samples[Math.floor(samples.length / 2)]!, calls, triangles };
+  }
+
+  /** End-to-end frame rate under the real loop, vsync included. */
+  async throughput(durationMs: number): Promise<number> {
+    let frames = 0;
+    const stop = this.stage.onAfterRender(() => {
+      frames += 1;
+    });
+
+    this.stage.start();
+    await new Promise((resolve) => setTimeout(resolve, durationMs));
+    this.stage.stop();
+    stop();
+
+    return (frames / durationMs) * 1000;
+  }
+
+  /** Bytes held by the render targets a view's chain allocates. */
+  targetBytes(): number {
+    const composer = this.view?.composer;
+    if (!composer) return 0;
+
+    const half = 8; // RGBA16F
+    const { renderTarget1, renderTarget2 } = composer.composer;
+    let bytes = (renderTarget1.width * renderTarget1.height + renderTarget2.width * renderTarget2.height) * half;
+
+    const taa = composer.taaPass;
+    if (taa) {
+      const history = (taa as unknown as { history: Array<{ width: number; height: number }> }).history;
+      for (const target of history) bytes += target.width * target.height * half;
+      if (taa.velocity) bytes += taa.velocity.target.width * taa.velocity.target.height * half;
+    }
+
+    return bytes;
   }
 
   memory(): { geometries: number; textures: number; canvases: number } {

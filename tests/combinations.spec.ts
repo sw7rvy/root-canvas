@@ -1,33 +1,7 @@
-import { test, expect, type Page } from '@playwright/test';
-import { PNG } from 'pngjs';
+import { test, expect } from '@playwright/test';
+import { luminanceVariance, settle, watchErrors } from './helpers';
 
 const ANCHOR = { x: 20, y: 20, width: 400, height: 300 };
-
-/**
- * A blank or silently-failing chain renders a flat rectangle. Real geometry
- * spreads luminance out, so variance separates "drew something" from "drew
- * nothing" without depending on where any particular object lands.
- */
-function luminanceVariance(buffer: Buffer): number {
-  const png = PNG.sync.read(buffer);
-  const samples: number[] = [];
-
-  for (let i = 0; i < png.data.length; i += 4) {
-    samples.push(0.2126 * png.data[i]! + 0.7152 * png.data[i + 1]! + 0.0722 * png.data[i + 2]!);
-  }
-
-  const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
-  return samples.reduce((total, value) => total + (value - mean) ** 2, 0) / samples.length;
-}
-
-function watchErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
-  });
-  page.on('pageerror', (error) => errors.push(error.message));
-  return errors;
-}
 
 test.describe('option combinations render without error', () => {
   const combinations: Array<{ name: string; effects?: Record<string, unknown>; clearColor?: number }> = [
@@ -62,7 +36,9 @@ test.describe('option combinations render without error', () => {
         { viewEffects: effects, viewClearColor: clearColor },
       );
 
-      const variance = luminanceVariance(await page.screenshot({ clip: ANCHOR }));
+      await settle(page);
+      await settle(page);
+  const variance = luminanceVariance(await page.screenshot({ clip: ANCHOR }));
 
       expect(errors, 'no shader or runtime errors').toEqual([]);
       expect(variance, `the view drew geometry, got variance ${variance.toFixed(1)}`).toBeGreaterThan(20);
@@ -85,6 +61,7 @@ test('an orthographic camera drives jitter, depth and velocity', async ({ page }
     return h.peakVelocity();
   });
 
+  await settle(page);
   const variance = luminanceVariance(await page.screenshot({ clip: ANCHOR }));
 
   expect(errors).toEqual([]);
@@ -104,6 +81,7 @@ test('a stencil mask coexists with TAA', async ({ page }) => {
     h.frame();
   });
 
+  await settle(page);
   const variance = luminanceVariance(await page.screenshot({ clip: ANCHOR }));
 
   expect(errors).toEqual([]);

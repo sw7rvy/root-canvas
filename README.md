@@ -86,6 +86,25 @@ npm run build:lib    # lib/root-canvas.js + lib/types/
 npm pack             # runs build:lib first via prepack
 ```
 
+### Releasing
+
+`.github/workflows/release.yml` publishes on a `v*` tag. It typechecks, runs the full test suite, refuses to publish if the tag and `package.json` version disagree or if that version already exists on the registry, then publishes with [provenance](https://docs.npmjs.com/generating-provenance-statements) — a signed attestation tying the tarball to this repo, commit and workflow run.
+
+One-time setup: create an npm **automation** token (or a granular token with *Bypass 2FA*), and add it as a repository secret named `NPM_TOKEN`.
+
+```bash
+gh secret set NPM_TOKEN        # prompts for the value; never commit it
+```
+
+Then each release is:
+
+```bash
+npm version patch              # or minor / major - commits and tags
+git push --follow-tags
+```
+
+Publishing from CI is also why the token belongs here rather than on a workstation: it lives in one place, is scoped to this package, and every publish is traceable to a commit.
+
 Verified by installing the packed tarball into a clean project: types resolve under `moduleResolution: "bundler"`, the full SSAO + TAA + velocity chain builds and runs, and the browser console stays clean.
 
 ## Files

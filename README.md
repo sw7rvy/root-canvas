@@ -262,11 +262,7 @@ Things worth knowing before extending this, each of which cost real debugging ti
 
 `.github/workflows/deploy.yml` typechecks, builds and publishes to GitHub Pages on every push to `master`, and can be run by hand from the Actions tab. `vite.config.js` sets `base` to `/root-canvas/` for builds only, so local dev still serves from `/`.
 
-Pushing changes to that workflow file requires a token with the `workflow` scope:
-
-```bash
-gh auth refresh -s workflow
-```
+The `gh-pages` branch it replaced has been deleted; Pages now builds from the workflow artifact.
 
 ## Limitations
 

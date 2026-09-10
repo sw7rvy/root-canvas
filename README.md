@@ -14,6 +14,7 @@ Four views on one canvas, each with a different chain: SSAO + TAA over a scene e
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # static bundle in dist/
+npm test         # Playwright suite (see Tests)
 ```
 
 ## Quick start
@@ -260,9 +261,24 @@ Things worth knowing before extending this, each of which cost real debugging ti
 - **`MaskPass` needs a stencil buffer** on the context *and* on the composer's render targets. Both are on by default here; `createStage({ stencil: false })` or `effects: { stencil: false }` opts out.
 - **Multiple copies of three break `instanceof`** checks inside `EffectComposer.render`. `vite.config.js` sets `resolve.dedupe: ['three']`.
 
+## Tests
+
+`npm test` drives a real browser against `tests/harness.html`, a purpose-built page that exposes the stage so a test can build a scene, step frames one at a time, and read pixels back. Deterministic stepping is what makes the assertions numeric rather than timing-dependent.
+
+| Spec | Asserts |
+| --- | --- |
+| `velocity.spec.ts` | Each of the six motion sources writes to the velocity buffer, a still scene writes nothing, and the mask channel stays off the background |
+| `compositing.spec.ts` | Transparent views let the page through, `clearColor` views don't, `preserveAlpha` rescues a chain that flattens alpha, and views stay inside their anchors |
+| `ssao.spec.ts` | Occlusion removes light, the contrast exponent is monotonic, and empty space stays unoccluded |
+| `lifecycle.spec.ts` | One canvas across views, disposal returns memory to zero, context loss/restore discards stale history, targets track the anchor |
+
+The velocity tests work by rendering two frames, mutating exactly one motion source, rendering a third, then reading peak motion out of the buffer — so a failure points at one code path. Each was verified to fail when that path is deliberately broken; a test that cannot fail is not protecting anything.
+
+Two notes if you extend them. `radius` is not a good axis to assert on: past a certain size, samples land on the background and occlusion *drops*, so the suite tests `power` instead, which is monotonic by construction. And the `output: 'ao'` buffer passes through tone mapping before it reaches a screenshot, so a raw AO of 1.0 arrives at roughly 232, not 255 — compare regions, not absolutes.
+
 ## Deploying the demo
 
-`.github/workflows/deploy.yml` typechecks, builds and publishes to GitHub Pages on every push to `master`, and can be run by hand from the Actions tab. `vite.config.js` sets `base` to `/root-canvas/` for builds only, so local dev still serves from `/`.
+`.github/workflows/deploy.yml` typechecks, runs the test suite, then builds and publishes to GitHub Pages on every push to `master`. A failing test blocks the deploy and uploads the Playwright report as an artifact, and can be run by hand from the Actions tab. `vite.config.js` sets `base` to `/root-canvas/` for builds only, so local dev still serves from `/`.
 
 The `gh-pages` branch it replaced has been deleted; Pages now builds from the workflow artifact.
 

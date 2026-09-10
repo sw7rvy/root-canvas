@@ -260,15 +260,13 @@ Things worth knowing before extending this, each of which cost real debugging ti
 
 ## Deploying the demo
 
-The live demo is the `dist/` bundle published to the `gh-pages` branch. `vite.config.js` sets `base` to `/root-canvas/` for builds only, so local dev still serves from `/`.
+`.github/workflows/deploy.yml` typechecks, builds and publishes to GitHub Pages on every push to `master`, and can be run by hand from the Actions tab. `vite.config.js` sets `base` to `/root-canvas/` for builds only, so local dev still serves from `/`.
+
+Pushing changes to that workflow file requires a token with the `workflow` scope:
 
 ```bash
-npm run build
-cd dist && git init -q && git add -A && git commit -qm "Deploy demo"
-git push -f https://github.com/sw7rvy/root-canvas.git HEAD:gh-pages
+gh auth refresh -s workflow
 ```
-
-To rebuild automatically on push instead, add a Pages workflow — that needs a token with the `workflow` scope (`gh auth refresh -s workflow`).
 
 ## Limitations
 

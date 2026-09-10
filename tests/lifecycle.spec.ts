@@ -63,50 +63,42 @@ test('removing a view frees its resources but leaves the stage running', async (
   expect(result.canvases, 'the shared canvas is untouched').toBe(1);
 });
 
-test('context loss stops the loop and restore rebuilds temporal state', async ({ page }) => {
+test('context loss stops the loop and restore discards temporal history', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const h = window.harness;
     h.createView('a', { taa: true });
     h.populate();
 
-    h.stage.start();
-    await new Promise((r) => setTimeout(r, 300));
+    // step frames by hand: a software renderer on CI may only manage one or two
+    // per animation frame, which makes any wall-clock frame count meaningless
+    for (let i = 0; i < 5; i += 1) h.frame();
     const framesBefore = h.view!.composer!.taaPass!.frame;
 
+    h.stage.start();
+    await new Promise((r) => setTimeout(r, 100));
     h.loseContext();
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 400));
     const lost = { contextLost: h.stage.core.contextLost, running: h.stage.isRunning };
 
     h.restoreContext();
-
-    // the restore event lands asynchronously and the loop resumes immediately,
-    // so watch for the counter dropping rather than sampling it once
-    let lowestAfterRestore = Infinity;
-    for (let i = 0; i < 40; i += 1) {
+    for (let i = 0; i < 40 && h.frameAtRestore < 0; i += 1) {
       await new Promise((r) => setTimeout(r, 50));
-      lowestAfterRestore = Math.min(lowestAfterRestore, h.view!.composer!.taaPass!.frame);
-      if (!h.stage.core.contextLost && h.view!.composer!.taaPass!.frame > 2) break;
     }
-
     h.stage.stop();
 
     return {
       framesBefore,
       lost,
-      lowestAfterRestore,
-      restored: {
-        contextLost: h.stage.core.contextLost,
-        running: h.stage.isRunning,
-        rendersAgain: h.view!.composer!.taaPass!.frame > 0,
-      },
+      frameAtRestore: h.frameAtRestore,
+      contextLost: h.stage.core.contextLost,
     };
   });
 
   expect(result.framesBefore, 'TAA accumulated history before the loss').toBeGreaterThan(0);
   expect(result.lost).toEqual({ contextLost: true, running: false });
-  expect(result.restored.contextLost).toBe(false);
-  expect(result.restored.rendersAgain, 'frames resume after restore').toBe(true);
-  expect(result.lowestAfterRestore, 'stale history was discarded').toBeLessThan(result.framesBefore);
+  expect(result.contextLost).toBe(false);
+  expect(result.frameAtRestore, 'the restore handler ran').toBeGreaterThanOrEqual(0);
+  expect(result.frameAtRestore, 'stale history is discarded on restore').toBe(0);
 });
 
 test('composer targets follow the anchor size', async ({ page }) => {

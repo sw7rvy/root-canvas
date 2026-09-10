@@ -134,12 +134,22 @@ class Harness {
   readonly stage = createStage({ autoStart: false, pauseWhenHidden: false, maxPixelRatio: 1 });
 
   view: View | null = null;
+  frameAtRestore = -1;
   private rigid: THREE.Mesh | null = null;
   private skinned: { mesh: THREE.SkinnedMesh; bones: THREE.Bone[] } | null = null;
   private instanced: THREE.InstancedMesh | null = null;
   private morphed: THREE.Mesh | null = null;
   private instancedMorph: THREE.InstancedMesh | null = null;
   private batched: { mesh: THREE.BatchedMesh; ids: number[] } | null = null;
+
+  constructor() {
+    // Stage subscribes first, so by the time this runs its handler has already
+    // invalidated the composers — this samples the counter synchronously,
+    // before the resumed loop can render anything
+    this.stage.core.events.on('contextrestored', () => {
+      this.frameAtRestore = this.view?.composer?.taaPass?.frame ?? -1;
+    });
+  }
 
   createView(anchorId: string, effects?: EffectsOptions, clearColor?: THREE.ColorRepresentation): View {
     const view = this.stage.createView({

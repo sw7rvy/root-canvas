@@ -55,13 +55,10 @@ test('occlusion stays off the background', async ({ page }) => {
     h.frame();
   });
 
-  // the AO buffer passes through tone mapping, so compare regions rather than
-  // expecting a raw 1.0 to land on 255
+  // An unoccluded AO of 1.0 still passes through ACES and sRGB before it
+  // reaches a screenshot, landing near 226 — that is fixed maths, so it holds
+  // across GPUs, unlike a scene-dependent average.
   const corner = meanLuminance(await page.screenshot({ clip: { x: 24, y: 24, width: 12, height: 12 } }));
-  const whole = meanLuminance(await page.screenshot({ clip: ANCHOR }));
 
-  expect(
-    corner,
-    `empty space must be less occluded than the scene average, got ${corner.toFixed(1)} vs ${whole.toFixed(1)}`,
-  ).toBeGreaterThan(whole + 2);
+  expect(corner, `empty space must read as unoccluded, got ${corner.toFixed(1)}`).toBeGreaterThan(220);
 });

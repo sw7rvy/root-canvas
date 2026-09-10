@@ -274,7 +274,11 @@ Things worth knowing before extending this, each of which cost real debugging ti
 
 The velocity tests work by rendering two frames, mutating exactly one motion source, rendering a third, then reading peak motion out of the buffer — so a failure points at one code path. Each was verified to fail when that path is deliberately broken; a test that cannot fail is not protecting anything.
 
-Two notes if you extend them. `radius` is not a good axis to assert on: past a certain size, samples land on the background and occlusion *drops*, so the suite tests `power` instead, which is monotonic by construction. And the `output: 'ao'` buffer passes through tone mapping before it reaches a screenshot, so a raw AO of 1.0 arrives at roughly 232, not 255 — compare regions, not absolutes.
+Three notes if you extend them:
+
+- `radius` is a bad axis to assert on. Past a certain size, samples land on the background and occlusion *drops*, so the suite tests `power`, which is monotonic by construction.
+- The `output: 'ao'` buffer passes through tone mapping before a screenshot sees it, so an unoccluded 1.0 arrives near 226, not 255. That number is fixed maths and stable across GPUs; scene-dependent averages are not.
+- Never assert on a wall-clock frame count. CI runs a software renderer that manages a couple of frames where a GPU manages sixty. Step frames explicitly and observe state changes through events instead — the context-restore test samples the TAA counter inside the `contextrestored` handler rather than racing the render loop for it.
 
 ## Deploying the demo
 

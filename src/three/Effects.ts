@@ -6,6 +6,7 @@ import { SavePass } from 'three/examples/jsm/postprocessing/SavePass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { TAAPass, type TAAOptions } from './TAAPass';
+import { clampSamples, preferredTargetType } from './Capabilities';
 import type { View } from './View';
 
 const AlphaRestoreShader = {
@@ -104,8 +105,8 @@ export class ViewComposer {
     const wantsDepth = options.depthTexture === true || taa !== null;
 
     this.target = new THREE.WebGLRenderTarget(1, 1, {
-      type: options.type ?? THREE.HalfFloatType,
-      samples: options.samples ?? 0,
+      type: preferredTargetType(options.type),
+      samples: clampSamples(options.samples ?? 0),
       depthBuffer: true,
       stencilBuffer: stencil,
     });
@@ -132,7 +133,7 @@ export class ViewComposer {
     if (options.preserveAlpha) {
       this.savePass = new SavePass(
         new THREE.WebGLRenderTarget(1, 1, {
-          type: options.type ?? THREE.HalfFloatType,
+          type: preferredTargetType(options.type),
           depthBuffer: false,
           stencilBuffer: false,
         }),

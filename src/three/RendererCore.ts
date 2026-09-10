@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Emitter } from './Emitter';
+import { detectCapabilities } from './Capabilities';
 
 export interface RendererCoreOptions {
   canvas?: HTMLCanvasElement;
@@ -108,6 +109,8 @@ export class RendererCore {
     this.renderer.autoClear = false;
     this.renderer.setClearColor(0x000000, 0);
 
+    detectCapabilities(this.renderer);
+
     this.canvas.addEventListener('webglcontextlost', this.onContextLost, false);
     this.canvas.addEventListener('webglcontextrestored', this.onContextRestored, false);
 
@@ -206,6 +209,7 @@ export class RendererCore {
 
   private onContextRestored = (): void => {
     this.contextLost = false;
+    detectCapabilities(this.renderer);
     this.applyPixelRatio();
     this.renderer.shadowMap.needsUpdate = true;
     this.resize();

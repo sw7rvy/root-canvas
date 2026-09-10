@@ -148,6 +148,23 @@ Defaults worth knowing:
 - `autoClear = false` — the frame clears once full-canvas, then each view clears depth (or colour, if it declares `clearColor`)
 - Pixel ratio is `min(devicePixelRatio, maxPixelRatio)`, re-evaluated through a self-rearming `matchMedia("(resolution: Xdppx)")` watcher, so monitor changes and browser zoom are caught, not just window resizes
 
+### Device capabilities
+
+Nothing assumes a desktop GPU. On the first context, and again after a restore, the renderer probes what the device can actually do and the passes build against that:
+
+| probed | why it matters |
+| --- | --- |
+| `EXT_color_buffer_half_float` | WebGL2 can *sample* half-float without it but not *render into* it. Missing it would make every composer target incomplete, so targets fall back to 8-bit and a warning is logged |
+| `MAX_SAMPLES` | asking for more MSAA than the driver supports makes a target incomplete; `samples` is clamped |
+| `MAX_TEXTURE_SIZE` | reported for diagnostics |
+
+```ts
+import { capabilities } from 'root-canvas';
+capabilities(); // { halfFloatTargets, floatTargets, maxSamples, maxTextureSize, renderer }
+```
+
+**[Open `/diagnostics/` on a device](https://sw7rvy.github.io/root-canvas/diagnostics/)** to see its answers, along with the chain it managed to build and a sustained frame rate.
+
 ### Reduced motion
 
 `Stage` reads `(prefers-reduced-motion: reduce)` and, by default, **freezes the clock rather than stopping the loop**: `delta` and `elapsed` stop advancing, so anything driven by them holds still, while rendering continues.
@@ -333,12 +350,15 @@ Things worth knowing before extending this, each of which cost real debugging ti
 | `compositing.spec.ts` | Transparent views let the page through, `clearColor` views don't, `preserveAlpha` rescues a chain that flattens alpha, and views stay inside their anchors |
 | `ssao.spec.ts` | Occlusion removes light, the contrast exponent is monotonic, and empty space stays unoccluded |
 | `lifecycle.spec.ts` | One canvas across views, disposal returns memory to zero, context loss/restore discards stale history, targets track the anchor |
+| `mobile.spec.ts` | Pixel-ratio capping on a high-DPI screen, canvas sizing to a mobile viewport, touch reaching views as pointer events, and the half-float fallback when the extension is absent |
 | `reduced-motion.spec.ts` | The preference freezes time but keeps rendering, `'ignore'` opts out, the state can be forced, and the query is read live |
 | `combinations.spec.ts` | Every option combination renders without a shader or runtime error, plus orthographic cameras, `MaskPass` alongside TAA, `resolutionScale` sizing, and off-screen views allocating nothing |
 
 `combinations.spec.ts` is a smoke tier, deliberately: it asserts each combination compiles, runs clean and draws something (measured as luminance variance, since a silently broken chain renders a flat rectangle). That covers the risk of a flag pairing nobody has ever run, not the correctness of what it drew — the other specs do that. Two of its checks go deeper: orthographic cameras must still produce motion vectors, and `resolutionScale` must shrink the composer *and* velocity targets.
 
 The velocity tests work by rendering two frames, mutating exactly one motion source, rendering a third, then reading peak motion out of the buffer — so a failure points at one code path. Each was verified to fail when that path is deliberately broken; a test that cannot fail is not protecting anything.
+
+Mobile specs run under Playwright device emulation, which gives a real viewport, device pixel ratio and touch input — but a desktop GPU. Fill rate and driver limits can only be answered on real hardware, which is what `diagnostics/` is for.
 
 Three notes if you extend them:
 

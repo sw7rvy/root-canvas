@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { preferredTargetType } from './Capabilities';
 import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { VelocityBuffer } from './VelocityBuffer';
 
@@ -122,7 +123,7 @@ function halton(index: number, base: number): number {
 
 function createHistoryTarget(name: string): THREE.WebGLRenderTarget {
   const target = new THREE.WebGLRenderTarget(1, 1, {
-    type: THREE.HalfFloatType,
+    type: preferredTargetType(),
     minFilter: THREE.LinearFilter,
     magFilter: THREE.LinearFilter,
     wrapS: THREE.ClampToEdgeWrapping,

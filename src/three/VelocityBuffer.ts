@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { preferredTargetType } from './Capabilities';
 
 const VELOCITY_VERTEX = /* glsl */ `
   #include <common>
@@ -220,7 +221,7 @@ export class VelocityBuffer {
     private readonly camera: THREE.Camera,
   ) {
     this.target = new THREE.WebGLRenderTarget(1, 1, {
-      type: THREE.HalfFloatType,
+      type: preferredTargetType(),
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       depthBuffer: true,

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Root Canvas diagnostics</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #0b0d12; color: #e6e9f0;
+           font: 15px/1.5 system-ui, -apple-system, sans-serif; padding: 16px; }
+    h1 { font-size: 17px; margin: 0 0 4px; }
+    p.lede { margin: 0 0 16px; color: #98a2b3; font-size: 13px; }
+    #view { height: 42vh; min-height: 220px; border: 1px solid #2a3040; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #1c2130; }
+    th { font-weight: 600; color: #98a2b3; width: 52%; }
+    td { font-variant-numeric: tabular-nums; }
+    tr.warn td { color: #ffb4a2; font-weight: 600; }
+    #done { margin-top: 14px; color: #7ee787; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Root Canvas diagnostics</h1>
+  <p class="lede">Runs the full SSAO + TAA + velocity chain and reports what this device supports.</p>
+  <div id="view"></div>
+  <div id="report"></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

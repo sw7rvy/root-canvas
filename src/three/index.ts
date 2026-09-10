@@ -1,3 +1,6 @@
+export { capabilities, detectCapabilities, preferredTargetType, clampSamples } from './Capabilities';
+export type { Capabilities } from './Capabilities';
+
 export { RendererCore } from './RendererCore';
 export type { RendererCoreOptions, RendererCoreEvents } from './RendererCore';
 

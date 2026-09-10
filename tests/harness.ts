@@ -3,8 +3,12 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { MaskPass, ClearMaskPass } from 'three/examples/jsm/postprocessing/MaskPass.js';
 import { DotScreenShader } from 'three/examples/jsm/shaders/DotScreenShader.js';
 import {
+  capabilities,
+  clampSamples,
   createStage,
   destroyStage,
+  detectCapabilities,
+  preferredTargetType,
   ssao,
   type EffectsOptions,
   type StageOptions,
@@ -463,6 +467,10 @@ declare global {
     ssao: typeof ssao;
     alphaDestroyingPass: typeof alphaDestroyingPass;
     maskedDotScreen: typeof maskedDotScreen;
+    capabilities: typeof capabilities;
+    detectCapabilities: typeof detectCapabilities;
+    preferredTargetType: typeof preferredTargetType;
+    clampSamples: typeof clampSamples;
   }
 }
 
@@ -471,3 +479,7 @@ window.THREE = THREE;
 window.ssao = ssao;
 window.alphaDestroyingPass = alphaDestroyingPass;
 window.maskedDotScreen = maskedDotScreen;
+window.capabilities = capabilities;
+window.detectCapabilities = detectCapabilities;
+window.preferredTargetType = preferredTargetType;
+window.clampSamples = clampSamples;

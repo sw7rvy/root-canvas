@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { preferredTargetType } from './Capabilities';
 import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import type { EffectPassFactory } from './Effects';
 
@@ -191,7 +192,7 @@ function createNoiseTexture(): THREE.DataTexture {
 
 function createTarget(name: string): THREE.WebGLRenderTarget {
   const target = new THREE.WebGLRenderTarget(1, 1, {
-    type: THREE.HalfFloatType,
+    type: preferredTargetType(),
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
     depthBuffer: false,

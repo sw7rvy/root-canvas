@@ -1,26 +1,73 @@
 {
   "name": "root-canvas",
-  "private": true,
-  "type": "module",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "description": "Many DOM-anchored 3D views sharing one WebGL context - per-view post-processing, depth-driven SSAO, and TAA with motion vectors for skinned, instanced, morphed and batched meshes",
   "license": "MIT",
-  "dependencies": {
-    "three": "^0.180.0"
+  "author": "sw7rvy",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./lib/root-canvas.js",
+  "module": "./lib/root-canvas.js",
+  "types": "./lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "import": "./lib/root-canvas.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sw7rvy/root-canvas.git"
+  },
+  "homepage": "https://sw7rvy.github.io/root-canvas/",
+  "bugs": {
+    "url": "https://github.com/sw7rvy/root-canvas/issues"
+  },
+  "keywords": [
+    "threejs",
+    "three",
+    "webgl",
+    "webgl2",
+    "3d",
+    "graphics",
+    "rendering",
+    "post-processing",
+    "ssao",
+    "taa",
+    "motion-vectors",
+    "ambient-occlusion",
+    "anti-aliasing",
+    "shared-canvas"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "three": ">=0.170.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:lib": "vite build --config vite.lib.config.js && tsc -p tsconfig.build.json",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test",
+    "bench": "node bench/frame-time.mjs",
+    "prepack": "npm run build:lib"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/pngjs": "^6.0.5",
     "@types/three": "^0.180.0",
     "pngjs": "^7.0.0",
+    "three": "^0.180.0",
     "typescript": "^5.6.0",
     "vite": "^8.2.2"
-  },
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "test": "playwright test",
-    "bench": "node bench/frame-time.mjs"
   }
 }

@@ -5,3 +5,5 @@ dist/
 .DS_Store
 playwright-report/
 test-results/
+lib/
+*.tgz

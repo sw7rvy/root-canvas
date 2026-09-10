@@ -6,6 +6,10 @@ Adding 3D to a component does not allocate a WebGL context. Browsers cap context
 
 **[Live demo →](https://sw7rvy.github.io/root-canvas/)**
 
+```bash
+npm install root-canvas three
+```
+
 ![Two of the demo's four views animating: an SSAO and TAA scene on an opaque floor above a bloom view whose glow fades into the page background — both drawn by the same renderer in the same frame](docs/demo.gif)
 
 Four views on one canvas, each with a different chain: SSAO + TAA over a scene exercising every motion-vector path; bloom with alpha preserved over the page; a full-view dot-screen; and a stencil-masked effect. Scroll — views render only while their anchor is on screen.
@@ -22,7 +26,7 @@ npm run bench    # frame cost per configuration (see Performance)
 
 ```ts
 import * as THREE from 'three';
-import { createStage, StudioLighting } from './src/three';
+import { createStage, StudioLighting } from 'root-canvas';
 
 const stage = createStage({ maxPixelRatio: 2, exposure: 1.1 });
 const envMap = stage.environment.room();
@@ -65,6 +69,24 @@ The canvas is `position: fixed; inset: 0; pointer-events: none`, sitting behind 
 Scissor rects are clamped to the canvas; viewports are not, so projection stays correct when an anchor is partly off-screen. Views off-screen entirely are skipped (`renderOnlyWhenOnScreen`, default `true`).
 
 Because the canvas ignores pointer events, input is captured once on `window` and hit-tested against anchor rects by descending `priority`, then converted to per-view NDC with a shared `Raycaster`.
+
+## Packaging
+
+`three` is a **peer dependency**, never bundled. Two copies of three break `instanceof` checks inside `EffectComposer`, and a library that ships its own copy guarantees exactly that — so the build externalises every `three` and `three/examples/jsm/*` import. Install it yourself alongside this package.
+
+| | |
+| --- | --- |
+| bundle | 58 kB, 14.7 kB gzipped, ESM only |
+| types | emitted from source, `moduleResolution: "bundler"` |
+| side effects | none declared, so unused exports tree-shake |
+| three | `>=0.170.0` as a peer |
+
+```bash
+npm run build:lib    # lib/root-canvas.js + lib/types/
+npm pack             # runs build:lib first via prepack
+```
+
+Verified by installing the packed tarball into a clean project: types resolve under `moduleResolution: "bundler"`, the full SSAO + TAA + velocity chain builds and runs, and the browser console stays clean.
 
 ## Files
 

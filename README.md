@@ -4,9 +4,14 @@ One `WebGLRenderer`, one full-page canvas, many independent 3D views anchored to
 
 Adding 3D to a component does not allocate a WebGL context. Browsers cap contexts (typically 8–16) and silently drop the oldest when you exceed it; this architecture never gets near that limit no matter how many components render 3D.
 
+**[Live demo →](https://sw7rvy.github.io/root-canvas/)**
+
+Four views on one canvas, each with a different chain: SSAO + TAA over a scene exercising every motion-vector path; bloom with alpha preserved over the page; a full-view dot-screen; and a stencil-masked effect. Scroll — views render only while their anchor is on screen.
+
 ```bash
 npm install
-npx vite
+npm run dev      # http://localhost:5173
+npm run build    # static bundle in dist/
 ```
 
 ## Quick start
@@ -252,6 +257,18 @@ Things worth knowing before extending this, each of which cost real debugging ti
 - **Every non-`RawShaderMaterial` compiles as `#version 300 es`** with ESSL1 compatibility defines, so `texelFetch`, `textureSize`, `gl_InstanceID`, and `gl_VertexID` are available in your own shaders.
 - **`MaskPass` needs a stencil buffer** on the context *and* on the composer's render targets. Both are on by default here; `createStage({ stencil: false })` or `effects: { stencil: false }` opts out.
 - **Multiple copies of three break `instanceof`** checks inside `EffectComposer.render`. `vite.config.js` sets `resolve.dedupe: ['three']`.
+
+## Deploying the demo
+
+The live demo is the `dist/` bundle published to the `gh-pages` branch. `vite.config.js` sets `base` to `/root-canvas/` for builds only, so local dev still serves from `/`.
+
+```bash
+npm run build
+cd dist && git init -q && git add -A && git commit -qm "Deploy demo"
+git push -f https://github.com/sw7rvy/root-canvas.git HEAD:gh-pages
+```
+
+To rebuild automatically on push instead, add a Pages workflow — that needs a token with the `workflow` scope (`gh auth refresh -s workflow`).
 
 ## Limitations
 

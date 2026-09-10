@@ -272,3 +272,7 @@ The `gh-pages` branch it replaced has been deleted; Pages now builds from the wo
 - SSAO reconstructs normals from depth, so silhouette edges are approximate. A real normal buffer would fix it at the cost of the extra G-buffer render this design avoids.
 - TAA's velocity pass is a second full scene render. Set `taa: { velocity: false }` on heavy scenes to trade moving-object quality for the draw calls.
 - No WebGPU path. `WebGLRenderer` only.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

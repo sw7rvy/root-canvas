@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "version": "1.0.0",
+  "license": "MIT",
   "dependencies": {
     "three": "^0.180.0"
   },

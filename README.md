@@ -107,6 +107,26 @@ Defaults worth knowing:
 - `autoClear = false` — the frame clears once full-canvas, then each view clears depth (or colour, if it declares `clearColor`)
 - Pixel ratio is `min(devicePixelRatio, maxPixelRatio)`, re-evaluated through a self-rearming `matchMedia("(resolution: Xdppx)")` watcher, so monitor changes and browser zoom are caught, not just window resizes
 
+### Reduced motion
+
+`Stage` reads `(prefers-reduced-motion: reduce)` and, by default, **freezes the clock rather than stopping the loop**: `delta` and `elapsed` stop advancing, so anything driven by them holds still, while rendering continues.
+
+Continuing to render is the part that matters here. Views are scissored to DOM anchors, so a stage that stopped drawing would leave stale pixels behind the moment the page scrolled — the content would visibly detach from its box. Freezing time gives a still image that still tracks its anchor.
+
+```ts
+createStage({ reducedMotion: 'freeze' });   // default
+createStage({ reducedMotion: 'ignore' });   // opt out entirely
+
+stage.reducedMotion;              // live state
+stage.elapsed;                    // animated seconds, frozen along with delta
+stage.setReducedMotion(true);     // force it
+stage.setReducedMotion(null);     // follow the viewer again
+```
+
+The media query is read live, so toggling the system setting takes effect without a reload. Because the clock is still sampled while frozen, resuming does not jump forward by the paused time.
+
+Anything animating outside the stage's callbacks — a scroll library, CSS transitions — is yours to gate on `stage.reducedMotion`.
+
 ### Context loss
 
 `webglcontextlost` is `preventDefault()`ed, the loop stops, and on restore the pixel ratio is reapplied, shadows are flagged for update, PMREM environments are regenerated (they do not survive), and TAA/velocity history is dropped. Subscribe via `stage.core.events.on('contextlost' | 'contextrestored', …)`.
@@ -272,6 +292,7 @@ Things worth knowing before extending this, each of which cost real debugging ti
 | `compositing.spec.ts` | Transparent views let the page through, `clearColor` views don't, `preserveAlpha` rescues a chain that flattens alpha, and views stay inside their anchors |
 | `ssao.spec.ts` | Occlusion removes light, the contrast exponent is monotonic, and empty space stays unoccluded |
 | `lifecycle.spec.ts` | One canvas across views, disposal returns memory to zero, context loss/restore discards stale history, targets track the anchor |
+| `reduced-motion.spec.ts` | The preference freezes time but keeps rendering, `'ignore'` opts out, the state can be forced, and the query is read live |
 | `combinations.spec.ts` | Every option combination renders without a shader or runtime error, plus orthographic cameras, `MaskPass` alongside TAA, `resolutionScale` sizing, and off-screen views allocating nothing |
 
 `combinations.spec.ts` is a smoke tier, deliberately: it asserts each combination compiles, runs clean and draws something (measured as luminance variance, since a silently broken chain renders a flat rectangle). That covers the risk of a flag pairing nobody has ever run, not the correctness of what it drew — the other specs do that. Two of its checks go deeper: orthographic cameras must still produce motion vectors, and `resolutionScale` must shrink the composer *and* velocity targets.
@@ -282,6 +303,7 @@ Three notes if you extend them:
 
 - `radius` is a bad axis to assert on. Past a certain size, samples land on the background and occlusion *drops*, so the suite tests `power`, which is monotonic by construction.
 - The `output: 'ao'` buffer passes through tone mapping before a screenshot sees it, so an unoccluded 1.0 arrives near 226, not 255. That number is fixed maths and stable across GPUs; scene-dependent averages are not.
+- The test server runs with HMR disabled. A hot reload mid-test destroys the execution context `page.evaluate` is running in, which shows up as a failure in whichever test happens to run first after an edit.
 - Never assert on a wall-clock frame count. CI runs a software renderer that manages a couple of frames where a GPU manages sixty. Step frames explicitly and observe state changes through events instead — the context-restore test samples the TAA counter inside the `contextrestored` handler rather than racing the render loop for it.
 
 ## Performance

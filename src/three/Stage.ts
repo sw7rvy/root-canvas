@@ -9,6 +9,17 @@ export interface StageOptions extends RendererCoreOptions {
   autoStart?: boolean;
   pauseWhenHidden?: boolean;
   maxDelta?: number;
+  /**
+   * What to do when the viewer asks for reduced motion.
+   *
+   * `'freeze'` (default) keeps rendering but stops the clock, so `delta` and
+   * `elapsed` never advance and nothing driven by them animates. Rendering has
+   * to continue: views are scissored to DOM anchors, so a stage that stopped
+   * would leave stale pixels behind as the page scrolls.
+   *
+   * `'ignore'` opts out entirely.
+   */
+  reducedMotion?: 'freeze' | 'ignore';
 }
 
 export type FrameCallback = (delta: number, elapsed: number) => void;
@@ -24,7 +35,11 @@ export class Stage {
   private readonly pauseWhenHidden: boolean;
   private readonly beforeRender = new Set<FrameCallback>();
   private readonly afterRender = new Set<FrameCallback>();
+  private readonly motionPolicy: 'freeze' | 'ignore';
+  private readonly motionQuery: MediaQueryList | null;
+  private motionOverride: boolean | null = null;
   private unbind: Unsubscribe[] = [];
+  private clockTime = 0;
   private frame = 0;
   private running = false;
   private destroyed = false;
@@ -35,6 +50,11 @@ export class Stage {
     this.environment = new EnvironmentManager(this.core);
     this.maxDelta = options.maxDelta ?? 1 / 20;
     this.pauseWhenHidden = options.pauseWhenHidden ?? true;
+    this.motionPolicy = options.reducedMotion ?? 'freeze';
+    this.motionQuery =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
 
     this.pointer.attach();
 
@@ -56,6 +76,22 @@ export class Stage {
 
   get isDestroyed(): boolean {
     return this.destroyed;
+  }
+
+  /** Whether animation is currently frozen for this stage. */
+  get reducedMotion(): boolean {
+    if (this.motionPolicy === 'ignore') return false;
+    return this.motionOverride ?? this.motionQuery?.matches ?? false;
+  }
+
+  /** Seconds of animated time, which stops accumulating while motion is reduced. */
+  get elapsed(): number {
+    return this.clockTime;
+  }
+
+  /** Force the reduced-motion state, or pass `null` to follow the viewer again. */
+  setReducedMotion(reduced: boolean | null): void {
+    this.motionOverride = reduced;
   }
 
   createView(options: ViewOptions): View {
@@ -95,7 +131,7 @@ export class Stage {
   }
 
   renderOnce(): void {
-    this.views.render(this.core, 0, this.clock.elapsedTime);
+    this.views.render(this.core, 0, this.clockTime);
   }
 
   dispose(): void {
@@ -117,12 +153,14 @@ export class Stage {
     if (!this.running) return;
     this.frame = requestAnimationFrame(this.tick);
 
-    const delta = Math.min(this.clock.getDelta(), this.maxDelta);
-    const elapsed = this.clock.elapsedTime;
+    // the clock is always read, so resuming does not jump by the paused time
+    const step = Math.min(this.clock.getDelta(), this.maxDelta);
+    const delta = this.reducedMotion ? 0 : step;
+    this.clockTime += delta;
 
-    for (const callback of this.beforeRender) callback(delta, elapsed);
-    this.views.render(this.core, delta, elapsed);
-    for (const callback of this.afterRender) callback(delta, elapsed);
+    for (const callback of this.beforeRender) callback(delta, this.clockTime);
+    this.views.render(this.core, delta, this.clockTime);
+    for (const callback of this.afterRender) callback(delta, this.clockTime);
   };
 
   private onVisibilityChange = (): void => {

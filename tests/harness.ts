@@ -2,7 +2,14 @@ import * as THREE from 'three';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { MaskPass, ClearMaskPass } from 'three/examples/jsm/postprocessing/MaskPass.js';
 import { DotScreenShader } from 'three/examples/jsm/shaders/DotScreenShader.js';
-import { createStage, destroyStage, ssao, type EffectsOptions, type View } from '../src/three';
+import {
+  createStage,
+  destroyStage,
+  ssao,
+  type EffectsOptions,
+  type StageOptions,
+  type View,
+} from '../src/three';
 
 type MotionSource = 'rigid' | 'skinned' | 'instanced' | 'morphed' | 'instancedMorph' | 'batched';
 
@@ -132,8 +139,10 @@ function makeBatched(): { mesh: THREE.BatchedMesh; ids: number[] } {
   return { mesh, ids };
 }
 
+const BASE_OPTIONS: StageOptions = { autoStart: false, pauseWhenHidden: false, maxPixelRatio: 1 };
+
 class Harness {
-  readonly stage = createStage({ autoStart: false, pauseWhenHidden: false, maxPixelRatio: 1 });
+  stage = createStage(BASE_OPTIONS);
 
   view: View | null = null;
   frameAtRestore = -1;
@@ -145,6 +154,19 @@ class Harness {
   private batched: { mesh: THREE.BatchedMesh; ids: number[] } | null = null;
 
   constructor() {
+    this.watchRestore();
+  }
+
+  /** Rebuild the stage with different options. */
+  reconfigure(options: StageOptions): void {
+    destroyStage();
+    this.stage = createStage({ ...BASE_OPTIONS, ...options });
+    this.view = null;
+    this.frameAtRestore = -1;
+    this.watchRestore();
+  }
+
+  private watchRestore(): void {
     // Stage subscribes first, so by the time this runs its handler has already
     // invalidated the composers — this samples the counter synchronously,
     // before the resumed loop can render anything

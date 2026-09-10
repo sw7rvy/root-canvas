@@ -16,7 +16,10 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev -- --port 5199 --strictPort',
     url: 'http://localhost:5199/tests/harness.html',
-    reuseExistingServer: !process.env.CI,
+    env: { VITE_NO_HMR: '1' },
+    // never reuse a server that might have HMR on, or the first evaluate after
+    // an edit races a reload
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

@@ -6,7 +6,7 @@ Adding 3D to a component does not allocate a WebGL context. Browsers cap context
 
 **[Live demo →](https://sw7rvy.github.io/root-canvas/)**
 
-![Two of the demo's four views: an SSAO and TAA scene on an opaque floor, and a bloom view composited over the page background — both drawn by the same renderer in the same frame](docs/screenshot.png)
+![Two of the demo's four views animating: an SSAO and TAA scene on an opaque floor above a bloom view whose glow fades into the page background — both drawn by the same renderer in the same frame](docs/demo.gif)
 
 Four views on one canvas, each with a different chain: SSAO + TAA over a scene exercising every motion-vector path; bloom with alpha preserved over the page; a full-view dot-screen; and a stencil-masked effect. Scroll — views render only while their anchor is on screen.
 

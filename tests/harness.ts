@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { MaskPass, ClearMaskPass } from 'three/examples/jsm/postprocessing/MaskPass.js';
+import { DotScreenShader } from 'three/examples/jsm/shaders/DotScreenShader.js';
 import { createStage, destroyStage, ssao, type EffectsOptions, type View } from '../src/three';
 
 type MotionSource = 'rigid' | 'skinned' | 'instanced' | 'morphed' | 'instancedMorph' | 'batched';
@@ -151,10 +153,17 @@ class Harness {
     });
   }
 
-  createView(anchorId: string, effects?: EffectsOptions, clearColor?: THREE.ColorRepresentation): View {
+  createView(
+    anchorId: string,
+    effects?: EffectsOptions,
+    clearColor?: THREE.ColorRepresentation,
+    orthographic = false,
+  ): View {
     const view = this.stage.createView({
       element: document.getElementById(anchorId)!,
-      camera: new THREE.PerspectiveCamera(40, 1, 0.1, 100),
+      camera: orthographic
+        ? new THREE.OrthographicCamera(-1.6, 1.6, 1.6, -1.6, 0.1, 100)
+        : new THREE.PerspectiveCamera(40, 1, 0.1, 100),
       clearColor: clearColor ?? null,
       effects,
     });
@@ -316,12 +325,28 @@ export function alphaDestroyingPass(): EffectsOptions['passes'] {
   };
 }
 
+/** A stencil-masked effect: exercises MaskPass, which needs a stencil buffer. */
+export function maskedDotScreen(): EffectsOptions['passes'] {
+  return ({ view, width, height }) => {
+    const maskScene = new THREE.Scene();
+    const maskCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const mask = new THREE.Mesh(new THREE.CircleGeometry(0.8, 32), new THREE.MeshBasicMaterial());
+
+    maskScene.add(mask);
+    mask.scale.x = height / width;
+    view.resources.track(mask);
+
+    return [new MaskPass(maskScene, maskCamera), new ShaderPass(DotScreenShader), new ClearMaskPass()];
+  };
+}
+
 declare global {
   interface Window {
     harness: Harness;
     THREE: typeof THREE;
     ssao: typeof ssao;
     alphaDestroyingPass: typeof alphaDestroyingPass;
+    maskedDotScreen: typeof maskedDotScreen;
   }
 }
 
@@ -329,3 +354,4 @@ window.harness = new Harness();
 window.THREE = THREE;
 window.ssao = ssao;
 window.alphaDestroyingPass = alphaDestroyingPass;
+window.maskedDotScreen = maskedDotScreen;

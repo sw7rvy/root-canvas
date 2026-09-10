@@ -271,6 +271,9 @@ Things worth knowing before extending this, each of which cost real debugging ti
 | `compositing.spec.ts` | Transparent views let the page through, `clearColor` views don't, `preserveAlpha` rescues a chain that flattens alpha, and views stay inside their anchors |
 | `ssao.spec.ts` | Occlusion removes light, the contrast exponent is monotonic, and empty space stays unoccluded |
 | `lifecycle.spec.ts` | One canvas across views, disposal returns memory to zero, context loss/restore discards stale history, targets track the anchor |
+| `combinations.spec.ts` | Every option combination renders without a shader or runtime error, plus orthographic cameras, `MaskPass` alongside TAA, `resolutionScale` sizing, and off-screen views allocating nothing |
+
+`combinations.spec.ts` is a smoke tier, deliberately: it asserts each combination compiles, runs clean and draws something (measured as luminance variance, since a silently broken chain renders a flat rectangle). That covers the risk of a flag pairing nobody has ever run, not the correctness of what it drew — the other specs do that. Two of its checks go deeper: orthographic cameras must still produce motion vectors, and `resolutionScale` must shrink the composer *and* velocity targets.
 
 The velocity tests work by rendering two frames, mutating exactly one motion source, rendering a third, then reading peak motion out of the buffer — so a failure points at one code path. Each was verified to fail when that path is deliberately broken; a test that cannot fail is not protecting anything.
 
